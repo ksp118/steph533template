@@ -47,6 +47,7 @@
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
+void PeriphCommonClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_ICACHE_Init(void);
 static void MX_ADC2_Init(void);
@@ -87,8 +88,7 @@ int main(void)
   /* SysTick_IRQn interrupt configuration */
   NVIC_SetPriority(SysTick_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),15, 0));
 
-  /** Disable the internal Pull-Up in Dead Battery pins of UCPD peripheral
-  */
+  /* Disable the internal Pull-Up in Dead Battery pins of UCPD peripheral */
   LL_PWR_DisableUCPDDeadBattery();
 
   /* USER CODE BEGIN Init */
@@ -97,6 +97,9 @@ int main(void)
 
   /* Configure the system clock */
   SystemClock_Config();
+
+  /* Configure the peripherals common clocks */
+  PeriphCommonClock_Config();
 
   /* USER CODE BEGIN SysInit */
 
@@ -136,12 +139,12 @@ int main(void)
   */
 void SystemClock_Config(void)
 {
-  LL_FLASH_SetLatency(LL_FLASH_LATENCY_1);
-  while(LL_FLASH_GetLatency()!= LL_FLASH_LATENCY_1)
+  LL_FLASH_SetLatency(LL_FLASH_LATENCY_5);
+  while(LL_FLASH_GetLatency()!= LL_FLASH_LATENCY_5)
   {
   }
 
-  LL_PWR_SetRegulVoltageScaling(LL_PWR_REGU_VOLTAGE_SCALE3);
+  LL_PWR_SetRegulVoltageScaling(LL_PWR_REGU_VOLTAGE_SCALE0);
   while (LL_PWR_IsActiveFlag_VOS() == 0)
   {
   }
@@ -152,15 +155,24 @@ void SystemClock_Config(void)
   {
   }
 
+  LL_RCC_HSI_Enable();
+
+   /* Wait till HSI is ready */
+  while(LL_RCC_HSI_IsReady() != 1)
+  {
+  }
+
+  LL_RCC_HSI_SetCalibTrimming(64);
+  LL_RCC_HSI_SetDivider(LL_RCC_HSI_DIV_2);
   LL_RCC_PLL1_SetSource(LL_RCC_PLL1SOURCE_HSE);
   LL_RCC_PLL1_SetVCOInputRange(LL_RCC_PLLINPUTRANGE_4_8);
   LL_RCC_PLL1_SetVCOOutputRange(LL_RCC_PLLVCORANGE_WIDE);
   LL_RCC_PLL1_SetM(4);
-  LL_RCC_PLL1_SetN(32);
+  LL_RCC_PLL1_SetN(80);
   LL_RCC_PLL1_SetP(2);
   LL_RCC_PLL1_SetQ(2);
   LL_RCC_PLL1_SetR(2);
-  LL_RCC_PLL1Q_Enable();
+  LL_RCC_PLL1P_Enable();
   LL_RCC_PLL1_Enable();
 
    /* Wait till PLL is ready */
@@ -168,10 +180,10 @@ void SystemClock_Config(void)
   {
   }
 
-  LL_RCC_SetSysClkSource(LL_RCC_SYS_CLKSOURCE_HSE);
+  LL_RCC_SetSysClkSource(LL_RCC_SYS_CLKSOURCE_PLL1);
 
    /* Wait till System clock is ready */
-  while(LL_RCC_GetSysClkSource() != LL_RCC_SYS_CLKSOURCE_STATUS_HSE)
+  while(LL_RCC_GetSysClkSource() != LL_RCC_SYS_CLKSOURCE_STATUS_PLL1)
   {
   }
 
@@ -180,9 +192,18 @@ void SystemClock_Config(void)
   LL_RCC_SetAPB2Prescaler(LL_RCC_APB2_DIV_2);
   LL_RCC_SetAPB3Prescaler(LL_RCC_APB3_DIV_1);
 
-  LL_Init1msTick(25000000);
+  LL_Init1msTick(250000000);
 
-  LL_SetSystemCoreClock(25000000);
+  LL_SetSystemCoreClock(250000000);
+}
+
+/**
+  * @brief Peripherals Common Clock Configuration
+  * @retval None
+  */
+void PeriphCommonClock_Config(void)
+{
+  LL_RCC_SetCLKPClockSource(LL_RCC_CLKP_CLKSOURCE_HSI);
 }
 
 /**
@@ -203,7 +224,7 @@ static void MX_ADC1_Init(void)
 
   LL_GPIO_InitTypeDef GPIO_InitStruct = {0};
 
-  LL_RCC_SetADCDACClockSource(LL_RCC_ADCDAC_CLKSOURCE_HCLK);
+  LL_RCC_SetADCDACClockSource(LL_RCC_ADCDAC_CLKSOURCE_HSE);
 
   /* Peripheral clock enable */
   LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_ADC);
@@ -223,7 +244,7 @@ static void MX_ADC1_Init(void)
 
   /** Configure the ADC multi-mode
   */
-  ADC_CommonInitStruct.CommonClock = LL_ADC_CLOCK_ASYNC_DIV1;
+  ADC_CommonInitStruct.CommonClock = LL_ADC_CLOCK_ASYNC_DIV4;
   ADC_CommonInitStruct.Multimode = LL_ADC_MULTI_INDEPENDENT;
   LL_ADC_CommonInit(__LL_ADC_COMMON_INSTANCE(ADC1), &ADC_CommonInitStruct);
 
@@ -287,7 +308,7 @@ static void MX_ADC2_Init(void)
 
   LL_GPIO_InitTypeDef GPIO_InitStruct = {0};
 
-  LL_RCC_SetADCDACClockSource(LL_RCC_ADCDAC_CLKSOURCE_HCLK);
+  LL_RCC_SetADCDACClockSource(LL_RCC_ADCDAC_CLKSOURCE_HSE);
 
   /* Peripheral clock enable */
   LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_ADC);
@@ -307,7 +328,7 @@ static void MX_ADC2_Init(void)
 
   /** Configure the ADC multi-mode
   */
-  ADC_CommonInitStruct.CommonClock = LL_ADC_CLOCK_ASYNC_DIV1;
+  ADC_CommonInitStruct.CommonClock = LL_ADC_CLOCK_ASYNC_DIV4;
   ADC_CommonInitStruct.Multimode = LL_ADC_MULTI_INDEPENDENT;
   LL_ADC_CommonInit(__LL_ADC_COMMON_INSTANCE(ADC2), &ADC_CommonInitStruct);
 
@@ -394,7 +415,7 @@ static void MX_SPI2_Init(void)
 
   LL_GPIO_InitTypeDef GPIO_InitStruct = {0};
 
-  LL_RCC_SetSPIClockSource(LL_RCC_SPI2_CLKSOURCE_PLL1Q);
+  LL_RCC_SetSPIClockSource(LL_RCC_SPI2_CLKSOURCE_CLKP);
 
   /* Peripheral clock enable */
   LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_SPI2);
@@ -637,8 +658,8 @@ static void MX_GPIO_Init(void)
 {
   LL_EXTI_InitTypeDef EXTI_InitStruct = {0};
   LL_GPIO_InitTypeDef GPIO_InitStruct = {0};
-/* USER CODE BEGIN MX_GPIO_Init_1 */
-/* USER CODE END MX_GPIO_Init_1 */
+  /* USER CODE BEGIN MX_GPIO_Init_1 */
+  /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
   LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOC);
@@ -649,7 +670,8 @@ static void MX_GPIO_Init(void)
 
   /**/
   LL_GPIO_ResetOutputPin(GPIOC, Sensor_Mux0_Pin|Sensor_Mux1_Pin|Sensor_Mux2_Pin|Sensor_MuxX_Pin
-                          |Motor_L1_Pin|Motor_L2_Pin|Motor_L3_Pin|Motor_L4_Pin);
+                          |Motor_L1_Pin|Motor_L2_Pin|Motor_L3_Pin|Motor_L4_Pin
+                          |LL_GPIO_PIN_12);
 
   /**/
   LL_GPIO_ResetOutputPin(LED2_GPIO_Port, LED2_Pin);
@@ -679,7 +701,9 @@ static void MX_GPIO_Init(void)
   LL_GPIO_SetPinMode(B1_GPIO_Port, B1_Pin, LL_GPIO_MODE_INPUT);
 
   /**/
-  GPIO_InitStruct.Pin = Sensor_Mux0_Pin|Sensor_Mux1_Pin|Sensor_Mux2_Pin|Sensor_MuxX_Pin;
+  GPIO_InitStruct.Pin = Sensor_Mux0_Pin|Sensor_Mux1_Pin|Sensor_Mux2_Pin|Sensor_MuxX_Pin
+                          |Motor_L1_Pin|Motor_L2_Pin|Motor_L3_Pin|Motor_L4_Pin
+                          |LL_GPIO_PIN_12;
   GPIO_InitStruct.Mode = LL_GPIO_MODE_OUTPUT;
   GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
   GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
@@ -703,19 +727,11 @@ static void MX_GPIO_Init(void)
   LL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /**/
-  GPIO_InitStruct.Pin = Motor_L1_Pin|Motor_L2_Pin|Motor_L3_Pin|Motor_L4_Pin;
-  GPIO_InitStruct.Mode = LL_GPIO_MODE_OUTPUT;
-  GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
-  GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
-  GPIO_InitStruct.Pull = LL_GPIO_PULL_DOWN;
-  LL_GPIO_Init(GPIOC, &GPIO_InitStruct);
-
-  /**/
   GPIO_InitStruct.Pin = Motor_R4_Pin;
   GPIO_InitStruct.Mode = LL_GPIO_MODE_OUTPUT;
   GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
   GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
-  GPIO_InitStruct.Pull = LL_GPIO_PULL_DOWN;
+  GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
   LL_GPIO_Init(Motor_R4_GPIO_Port, &GPIO_InitStruct);
 
   /**/
@@ -729,11 +745,11 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = LL_GPIO_MODE_OUTPUT;
   GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
   GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
-  GPIO_InitStruct.Pull = LL_GPIO_PULL_DOWN;
+  GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
   LL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-/* USER CODE BEGIN MX_GPIO_Init_2 */
-/* USER CODE END MX_GPIO_Init_2 */
+  /* USER CODE BEGIN MX_GPIO_Init_2 */
+  /* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
@@ -754,8 +770,7 @@ void Error_Handler(void)
   }
   /* USER CODE END Error_Handler_Debug */
 }
-
-#ifdef  USE_FULL_ASSERT
+#ifdef USE_FULL_ASSERT
 /**
   * @brief  Reports the name of the source file and the source line number
   *         where the assert_param error has occurred.
